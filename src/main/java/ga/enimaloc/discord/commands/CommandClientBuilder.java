@@ -15,9 +15,9 @@ public class CommandClientBuilder {
     private final List<Command> commands = new ArrayList<>();
     private HelpCommand helpCommand = new HelpCommand() {};
     private boolean needPrefixInPrivate = false;
-    private BiConsumer<MessageReceivedEvent, CommandClient> onCommandExecuted = null;
-    private BiConsumer<GuildMessageReceivedEvent, CommandClient> onGuildCommandExecuted = null;
-    private BiConsumer<PrivateMessageReceivedEvent, CommandClient> onPrivateCommandExecuted = null;
+    private BiConsumer<MessageReceivedEvent, CommandClient> onCommandExecuted = (event, client) -> {};
+    private BiConsumer<GuildMessageReceivedEvent, CommandClient> onGuildCommandExecuted = (event, client) -> {};
+    private BiConsumer<PrivateMessageReceivedEvent, CommandClient> onPrivateCommandExecuted = (event, client) -> {};
 
     public CommandClientBuilder setPrefix(String... prefix) {
         this.prefix = prefix;
@@ -43,11 +43,11 @@ public class CommandClientBuilder {
 
     public CommandClientBuilder addCommand(Command command) {
         List<String> list = Arrays.asList(command.getAliases());
-        list.add(command.getName());
-        if (commandsId.keySet().stream().anyMatch(list::contains))
+        if (commandsId.containsKey(command.getName()) || commandsId.keySet().stream().anyMatch(list::contains))
             throw new IllegalArgumentException("A command with the same name or aliases is already registered");
 
         commands.add(command);
+        commandsId.put(command.getName(), commands.size()-1);
         for (String name : list) commandsId.put(name, commands.size()-1);
         return this;
     }

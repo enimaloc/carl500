@@ -81,7 +81,7 @@ public class CommandClientImpl extends ListenerAdapter implements CommandClient 
         }
 
         String[] tMessage = message.split(" ");
-        if (!commandsId.containsKey(tMessage[0]))
+        if (commandsId.containsKey(tMessage[0]))
             onSuccess.accept(commands.get(commandsId.get(tMessage[0])), tMessage);
 
     }

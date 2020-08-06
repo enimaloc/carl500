@@ -93,11 +93,11 @@ public class Logger implements org.slf4j.Logger {
         resetLevel();
 
         switch (level) {
-            case ERROR: setErrorLevel(true);
-            case WARN:  setWarnLevel(true);
-            case INFO:  setInfoLevel(true);
-            case DEBUG: setDebugLevel(true);
             case TRACE: setTraceLevel(true);
+            case DEBUG: setDebugLevel(true);
+            case INFO:  setInfoLevel(true);
+            case WARN:  setWarnLevel(true);
+            case ERROR: setErrorLevel(true);
         }
     }
 

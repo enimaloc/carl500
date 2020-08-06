@@ -14,9 +14,9 @@ public class Category {
     private final String name;
     private String description;
     private Color color;
-    private Predicate<MessageReceivedEvent> validator;
-    private Predicate<GuildMessageReceivedEvent> guildValidator;
-    private Predicate<PrivateMessageReceivedEvent> privateValidator;
+    private Predicate<MessageReceivedEvent> validator = event -> true;
+    private Predicate<GuildMessageReceivedEvent> guildValidator = event -> true;
+    private Predicate<PrivateMessageReceivedEvent> privateValidator = event -> true;
 
     public static Category get(String name) {
         if (!singleton.containsKey(name)) singleton.put(name, new Category(name));

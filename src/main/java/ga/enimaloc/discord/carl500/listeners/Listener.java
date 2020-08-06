@@ -28,8 +28,8 @@ public class Listener extends ListenerAdapter {
     }
 
     public void onPrivateMessageReceived(@NotNull PrivateMessageReceivedEvent event) {
-        if (Arrays.stream(this.commandClient.getPrefix()).anyMatch((prefix) -> event.getMessage().getContentRaw().startsWith(prefix)) &&
-                !event.getAuthor().isBot())
+        if (Arrays.stream(this.commandClient.getPrefix()).anyMatch((prefix) -> event.getMessage().getContentRaw().startsWith(prefix)) ||
+                event.getAuthor().isBot())
             return;
         if (User.get(event.getAuthor(), this.connection, event.getJDA()).getTicketId() != 0L)
             Objects.requireNonNull(event.getJDA().getTextChannelById(event.getAuthor().getId())).sendMessage(event.getMessage()).queue();

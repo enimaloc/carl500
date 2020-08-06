@@ -4,8 +4,12 @@ import ga.enimaloc.discord.carl500.constant.Default;
 import ga.enimaloc.discord.carl500.constant.Info;
 import io.sentry.Sentry;
 import java.io.File;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.List;
+
+import io.sentry.SentryClient;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -181,9 +185,14 @@ public class Main {
         StaticLoggerBinder.getSingleton().getLoggerFactory().getLogger("ROOT").setLevel(Level.valueOf(arguments.getOptionValue("loggerLevel", "info").toUpperCase()));
 
         if (!arguments.hasOption("disableSentry")) {
-            Sentry.init(arguments.getOptionValue("sentryDns", (String)null));
+            Sentry.init(arguments.getOptionValue("sentryDns", null));
             Sentry.getStoredClient().setEnvironment(arguments.getOptionValue("environment", "production"));
             Sentry.getStoredClient().setRelease(Info.VERSION);
+            try {
+                Sentry.getStoredClient().setServerName(InetAddress.getLocalHost().getCanonicalHostName());
+            } catch (UnknownHostException e) {
+                Carl500.logger.error("Cannot get localhost hostname", e);
+            }
         }
 
         new Carl500(arguments);
