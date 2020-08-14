@@ -1,10 +1,12 @@
 package ga.enimaloc.discord.carl500.listeners;
 
+import ga.enimaloc.discord.carl500.constant.Constant;
 import ga.enimaloc.discord.carl500.constant.Emote;
 import ga.enimaloc.discord.carl500.entities.User;
 import ga.enimaloc.discord.commands.CommandClient;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.ChannelType;
+import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -14,73 +16,48 @@ import org.jetbrains.annotations.NotNull;
 import java.awt.*;
 import java.sql.Connection;
 import java.util.*;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Listener extends ListenerAdapter {
     private final CommandClient commandClient;
     private final Connection connection;
-    private final Map<Predicate<MessageReactionAddEvent>, Consumer<MessageReactionAddEvent>> waitReaction = new HashMap();
+    private final Map<Predicate<MessageReactionAddEvent>, Consumer<MessageReactionAddEvent>> waitReaction = new HashMap<>();
 
     public Listener(CommandClient commandClient, Connection connection) {
         this.commandClient = commandClient;
         this.connection = connection;
     }
 
-    public void onPrivateMessageReceived(@NotNull PrivateMessageReceivedEvent event) {
-        if (Arrays.stream(this.commandClient.getPrefix()).anyMatch((prefix) -> event.getMessage().getContentRaw().startsWith(prefix)) ||
-                event.getAuthor().isBot())
-            return;
-        if (User.get(event.getAuthor(), this.connection, event.getJDA()).getTicketId() != 0L)
-            Objects.requireNonNull(event.getJDA().getTextChannelById(event.getAuthor().getId())).sendMessage(event.getMessage()).queue();
-        else this.createTicketProcedure(event);
+    @Override
+    public void onGuildMessageReceived(@NotNull GuildMessageReceivedEvent event) {
+        Matcher matcher = Message.JUMP_URL_PATTERN.matcher(event.getMessage().getContentRaw());
+        if (!matcher.find() || event.getMessage().isSuppressedEmbeds()) return;
+        TextChannel textChannel = event.getJDA().getTextChannelById(matcher.group(2));
+        if (textChannel == null) return;
+        textChannel.getHistoryAround(matcher.group(3), 1).queue(history->{
+            Message targetMessage = history.getMessageById(matcher.group(3));
+            if (targetMessage == null) return;
+            EmbedBuilder builder = new EmbedBuilder()
+                    .setAuthor(targetMessage.getAuthor().getAsTag(), targetMessage.getAuthor().getEffectiveAvatarUrl())
+                    .setTimestamp(targetMessage.isEdited() ? targetMessage.getTimeEdited() : targetMessage.getTimeCreated())
+                    .setFooter(targetMessage.isEdited() ? "Edited" : "")
+                    .setDescription(targetMessage.getContentRaw());
 
-        super.onPrivateMessageReceived(event);
-    }
+            for (Message.Attachment attachment : targetMessage.getAttachments()) {
 
-    private void createTicketProcedure(PrivateMessageReceivedEvent event) {
-        event.getChannel().sendMessage("Voulez vous envoyer votre précédant message au staff de `Stationeers-FR` ?\nRéagissez avec "+Emote.CONFIRMATION+" pour oui ou "+Emote.CANCEL+" pour non").queue((message) -> {
-            message.addReaction(Emote.CONFIRMATION).queue();
-            message.addReaction(Emote.CANCEL).queue();
-            this.waitReaction.put(
-                    (check) ->
-                            check.isFromType(ChannelType.PRIVATE) && check.getUserIdLong() == event.getAuthor().getIdLong() &&
-                            check.getReactionEmote().isEmoji() &&
-                            Arrays.asList(Emote.CONFIRMATION, Emote.CANCEL).contains(check.getReactionEmote().getEmoji()),
-                    (e) -> {
-                        switch (e.getReactionEmote().getEmoji()) {
-                            case Emote.CONFIRMATION:
-                                Objects.requireNonNull(e.getJDA().getTextChannelById(501840622538457098L)).sendMessage(
-                                        new EmbedBuilder()
-                                                .setDescription(event.getMessage().getContentRaw() + "\n\n" +
-                                                        "Réagissez avec " + Emote.TICKET_ACCEPT + " pour créer un nouveaux salon pour parler avec la personne\n" +
-                                                        "Réagissez avec " + Emote.TICKET_DENY + " pour supprimer le ticket\n" +
-                                                        "Réagissez avec " + Emote.TICKET_REPORT + " pour signalé un abus")
-                                                .setTimestamp(new Date().toInstant())
-                                                .setColor(Color.RED)
-                                                .build()
-                                ).queue((msg) -> {
-                                    msg.addReaction(Emote.TICKET_ACCEPT).queue();
-                                    msg.addReaction(Emote.TICKET_DENY).queue();
-                                    msg.addReaction(Emote.TICKET_REPORT).queue();
-                                    e.getPrivateChannel().sendMessage("Votre ticket vient d'être envoyé au staff").queue();
-                                    User.get(event.getAuthor(), this.connection, e.getJDA());
-                                }, RestAction.getDefaultFailure().andThen((throwable) -> {
-                                    e.getPrivateChannel().sendMessage("Votre ticket n'as pas pus être envoyé au staff, l'erreur a été reporter à mon développeur, veuillez ne pas recréez de ticket pendant ce temps").queue();
-                                }));
-                                break;
+                if (attachment.isImage())
+                    builder.setImage(attachment.getUrl());
+                else
+                    builder.addField(attachment.isVideo() ? "Vidéo" : "Inconnu", String.format("[%s](%s)", attachment.getFileName(), attachment.getUrl()), true);
+            }
 
-                            case Emote.CANCEL:
-                                e.getPrivateChannel().sendMessage("Votre ticket vient d'être annulé").queue();
-                                break;
-                        }
-                    });
+            event.getChannel().sendMessage(builder.build()).queue();
         });
-    }
-
-    public void onMessageReactionAdd(@NotNull MessageReactionAddEvent event) {
-        this.waitReaction.keySet().stream().filter(predicate -> predicate.test(event)).iterator()
-                .forEachRemaining(predicate -> this.waitReaction.remove(predicate).accept(event));
-        super.onMessageReactionAdd(event);
+        super.onGuildMessageReceived(event);
     }
 }

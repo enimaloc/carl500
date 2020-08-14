@@ -3,13 +3,16 @@ package ga.enimaloc.discord.commands;
 import java.awt.Color;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Predicate;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class Category {
-    private static final Map<String, Category> singleton = new HashMap();
+    private static final Map<String, Category> singleton = new HashMap<>();
 
     private final String name;
     private String description;
@@ -18,9 +21,15 @@ public class Category {
     private Predicate<GuildMessageReceivedEvent> guildValidator = event -> true;
     private Predicate<PrivateMessageReceivedEvent> privateValidator = event -> true;
 
+    @Nullable
     public static Category get(String name) {
-        if (!singleton.containsKey(name)) singleton.put(name, new Category(name));
-        return singleton.get(name);
+        return singleton.get(singleton.keySet().stream().filter(key -> key.equalsIgnoreCase(name)).findFirst().orElse(""));
+    }
+
+    @NotNull
+    public static Category getOrCreate(String name) {
+        if (singleton.keySet().stream().noneMatch(key -> key.equalsIgnoreCase(name))) singleton.put(name, new Category(name));
+        return Objects.requireNonNull(get(name));
     }
 
     Category(String name) {

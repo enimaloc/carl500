@@ -1,5 +1,6 @@
 package ga.enimaloc.discord.carl500.constant;
 
+import java.awt.*;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,9 +22,15 @@ public class Constant {
 
     public static final long GUILD_MAIN = 500678477985349646L;
 
+    public static final Color TICKET_COLOR_WAIT = Color.BLUE;
+    public static final Color TICKET_COLOR_PROGRESS = Color.ORANGE;
+    public static final Color TICKET_COLOR_RESOLVE = Color.GREEN;
+    public static final Color TICKET_COLOR_DECLINE = Color.BLACK;
+    public static final Color TICKET_COLOR_REPORT = Color.RED;
+
 
     static {
-        List<Long> owners_ids = new ArrayList();
+        List<Long> owners_ids = new ArrayList<>();
 
         for (Field field : Constant.class.getFields()) {
             if (field.getName().startsWith("OWNER_")) {

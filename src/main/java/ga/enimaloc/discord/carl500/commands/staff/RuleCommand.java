@@ -6,6 +6,12 @@ import ga.enimaloc.discord.carl500.utils.UserUtils;
 import ga.enimaloc.discord.commands.Category;
 import ga.enimaloc.discord.commands.Command;
 import ga.enimaloc.discord.commands.CommandClient;
+import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -13,40 +19,58 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.TextChannel;
-import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 
 public class RuleCommand implements Command {
 
+    private Options options = new Options()
+            .addOption(Option.builder("a")
+                    .longOpt("add")
+                    .type(String.class)
+                    .hasArgs()
+                    .valueSeparator('|')
+                    .numberOfArgs(Option.UNLIMITED_VALUES)
+                    .argName("rules")
+                    .desc("Ajouter des règles, options: <règles>")
+                    .build())
+            .addOption(Option.builder("r")
+                    .longOpt("remove")
+                    .type(String.class)
+                    .hasArgs()
+                    .valueSeparator('|')
+                    .numberOfArgs(Option.UNLIMITED_VALUES)
+                    .argName("rules")
+                    .desc("Supprimer des règles, options: <all | numéro de la règles>")
+                    .build());
+
+    @Override
     public String getName() {
         return "rule";
     }
 
-    public String getArguments() {
-        return "<add rule1[|rule2|...] | remove all|%i%>";
+    @Override
+    public Options getArguments() {
+        return options;
     }
 
+    @Override
     public String getHelp() {
         return "Ajouter|Enlever une règle";
     }
 
+    @Override
     public Category getCategory() {
-        return Category.get("Staff");
+        return Category.getOrCreate("Staff");
     }
 
-    public void executeGuild(GuildMessageReceivedEvent event, String[] arguments, CommandClient commandClient) {
-        if (!event.isWebhookMessage() && UserUtils.isAdministrator((Member)Objects.requireNonNull(event.getMember()))) {
+    @Override
+    public void executeGuild(GuildMessageReceivedEvent event, CommandLine arguments, CommandClient commandClient) {
+        if (!event.isWebhookMessage() && UserUtils.isAdministrator(Objects.requireNonNull(event.getMember()))) {
             List<String> rules = this.read();
-            if ("add".equalsIgnoreCase(arguments[1])) {
-                rules = this.add(arguments);
-            } else if ("remove".equalsIgnoreCase(arguments[1])) {
-                rules = this.remove(arguments);
-            }
+            if (arguments.hasOption("add")) rules = this.add(arguments.getOptionValues("add"));
+            else if (arguments.hasOption("remove")) rules = this.remove(arguments.getOptionValues("remove"));
 
             this.refresh(rules, event);
             this.write(rules);
@@ -78,11 +102,11 @@ public class RuleCommand implements Command {
 
     private void refresh(List<String> rules, GuildMessageReceivedEvent event) {
         TextChannel rulesChannel = event.getGuild().getTextChannelById(Constant.CHANNEL_RULES);
-        Objects.requireNonNull(rulesChannel).getHistory().retrievePast(50).queue((messages) -> {
-            messages.forEach((m) -> {
-                m.delete().queue();
-            });
-        });
+        Objects.requireNonNull(rulesChannel).getHistory().retrievePast(50).queue(
+                (messages) -> messages.forEach(
+                        (m) -> m.delete().queue()
+                )
+        );
         StringBuilder stringBuilder = new StringBuilder("Pour avoir une bonne entente entre les membres du serveur nous avons instaurez un règlement, celle-ci sont considérées comme accepté par tout les membres au premier message envoyé.\n\n**Règle de " + event.getGuild().getName() + ":**\n\n");
 
         for(int i = 0; i < rules.size(); ++i) {
@@ -119,13 +143,13 @@ public class RuleCommand implements Command {
     private List<String> read() {
         File ruleFile = new File("rules.txt");
         if (!ruleFile.exists()) {
-            return new ArrayList();
+            return new ArrayList<>();
         } else {
             try {
                 return Files.readAllLines(ruleFile.toPath());
             } catch (IOException e) {
                 Carl500.logger.error("An exception was thrown when trying to read `rule.txt` file", e);
-                return new ArrayList();
+                return new ArrayList<>();
             }
         }
     }

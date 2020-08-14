@@ -10,6 +10,12 @@ repositories {
     jcenter()
 }
 
+compileJava.options.encoding = 'UTF-8'
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
 dependencies {
     compile (group: 'net.dv8tion', name: 'JDA', version: '4.2.0_175') {
         exclude module: 'opus-java'

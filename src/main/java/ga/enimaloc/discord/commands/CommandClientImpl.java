@@ -8,6 +8,9 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.ParseException;
 
 public class CommandClientImpl extends ListenerAdapter implements CommandClient {
     private final String[] prefix;
@@ -33,7 +36,11 @@ public class CommandClientImpl extends ListenerAdapter implements CommandClient 
     public void onMessageReceived(@Nonnull MessageReceivedEvent event) {
         BiConsumer<Command, String[]> success = (command, arguments) -> {
             if (command.getCategory().getValidator().test(event)) {
-                command.execute(event, arguments, this);
+                try {
+                    command.execute(event, new DefaultParser().parse(command.getArguments(), arguments), this);
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
                 this.onCommandExecuted.accept(event, this);
             }
         };
@@ -47,7 +54,11 @@ public class CommandClientImpl extends ListenerAdapter implements CommandClient 
     public void onPrivateMessageReceived(@Nonnull PrivateMessageReceivedEvent event) {
         BiConsumer<Command, String[]> success = (command, arguments) -> {
             if (command.getCategory().getPrivateValidator().test(event)) {
-                command.executePrivate(event, arguments, this);
+                try {
+                    command.executePrivate(event, new DefaultParser().parse(command.getArguments(), arguments), this);
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
                 this.onPrivateCommandExecuted.accept(event, this);
             }
         };
@@ -61,7 +72,11 @@ public class CommandClientImpl extends ListenerAdapter implements CommandClient 
     public void onGuildMessageReceived(@Nonnull GuildMessageReceivedEvent event) {
         this.check(event.getMessage().getContentRaw(), (command, arguments) -> {
             if (command.getCategory().getGuildValidator().test(event)) {
-                command.executeGuild(event, arguments, this);
+                try {
+                    command.executeGuild(event, new DefaultParser().parse(command.getArguments(), arguments), this);
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
                 this.onGuildCommandExecuted.accept(event, this);
             }
         });
